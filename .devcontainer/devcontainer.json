@@ -1,0 +1,74 @@
+{
+  "name": "Claude Code Sandbox",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:America/Los_Angeles}",
+      "CLAUDE_CODE_VERSION": "latest",
+      "GIT_DELTA_VERSION": "0.18.2",
+      "ZSH_IN_DOCKER_VERSION": "1.2.0"
+    }
+  },
+  // Pluggable tools live as local Dev Container Features (.devcontainer/features/*).
+  // They install at BUILD time (full network — before init-firewall.sh runs), so the
+  // runtime firewall stays locked to GitHub+npm. Add/remove a tool by editing this list;
+  // bump a tool's version by editing its option here.
+  "features": {
+    "./features/serena": { "version": "1.5.3" }
+  },
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        }
+      }
+    }
+  },
+  "remoteUser": "node",
+  // The codex plugin + CLI are baked into the image (see Dockerfile). To pick up
+  // codex updates after bumping the pinned versions, you must remove the stale
+  // claude-code-config-<devcontainerId> volume before reopening — full procedure
+  // is documented in .devcontainer/Dockerfile under "UPDATING the pinned versions".
+  "mounts": [
+    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=codex-config-${devcontainerId},target=/home/node/.codex,type=volume",
+    "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,readonly"
+    //"source=${localEnv:HOME}/.claude/plugins,target=/home/node/.claude/plugins,type=bind,readonly"
+  ],
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  // Seed /home/node/.claude/settings.json with: (1) the statusline command pointing at the
+  // committed .devcontainer/statusline.sh (exposed by the workspace mount, so no host coupling);
+  // (2) the enabledPlugins entry for codex@openai-codex (the plugin is baked into the image via
+  // Dockerfile but is installed-but-disabled by default; this enables it so /codex:review etc.
+  // are active).
+  "postCreateCommand": "f=/home/node/.claude/settings.json; mkdir -p $(dirname $f); [ -f $f ] || echo '{}' > $f; tmp=$(mktemp); jq '. + {statusLine:{type:\"command\",command:\"bash /workspace/.devcontainer/statusline.sh\"}, enabledPlugins: ((.enabledPlugins // {}) + {\"codex@openai-codex\": true})}' $f > $tmp && mv $tmp $f",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+  "waitFor": "postStartCommand"
+}

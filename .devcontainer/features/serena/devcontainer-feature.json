@@ -1,0 +1,16 @@
+{
+  "id": "serena",
+  "version": "1.0.0",
+  "name": "Serena MCP server",
+  "description": "LSP-based semantic code tools (symbol search, references, diagnostics) over MCP, installed via uv into the remote user's ~/.local.",
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "1.5.3",
+      "description": "serena-agent version to install from PyPI."
+    }
+  },
+  "containerEnv": {
+    "PATH": "${PATH}:/home/node/.local/bin"
+  }
+}

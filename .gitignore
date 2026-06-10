@@ -1,0 +1,15 @@
+# Serena MCP per-project cache/index/memories (regenerated on demand)
+.serena/
+
+# Local environment variables (may hold real tokens — never commit)
+.env.local
+
+# Self-improving doc-review hook artifacts (regenerated each session)
+.claude/doc-review.md
+.claude/.doc-review-state
+
+# Python bytecode cache
+__pycache__/
+
+# Next.js build output
+.next/

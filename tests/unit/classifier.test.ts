@@ -87,7 +87,7 @@ describe('classifyMessage()', () => {
       },
     })
 
-    const openComplaints = [{ id: 'cmp-1', title: 'רעש בלילה', category: 'noise' }]
+    const openComplaints = [{ id: 'cmp-1', title: 'רעש בלילה', category: 'noise' as const }]
     await classifyMessage({ message: 'יש רעש מהשכן', openComplaints })
 
     const callArgs = mockParse.mock.calls[0][0]

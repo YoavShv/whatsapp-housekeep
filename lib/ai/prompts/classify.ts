@@ -1,7 +1,9 @@
+import type { ComplaintCategory } from '@/lib/db/schema'
+
 export interface OpenComplaint {
   id: string
   title: string
-  category: string
+  category: ComplaintCategory
 }
 
 export function buildClassifySystemPrompt(openComplaints: OpenComplaint[]): string {
@@ -34,6 +36,7 @@ ${openComplaintsList}
 ## הנחיות
 1. קרא את ההודעה בעיון.
 2. החלט האם ההודעה מתארת תלונה על בעיה בבניין (is_complaint: true/false).
+2a. אם is_complaint=false — הגדר את כל שאר השדות (category, urgency, dedupe_target_id, suggested_title_he) כ-null.
 3. אם זו תלונה — בחר קטגוריה ורמת דחיפות מהרשימות לעיל.
 4. אם התלונה דומה לאחת מהתלונות הפתוחות — ציין את ה-ID שלה ב-dedupe_target_id.
 5. חלץ ישויות רלוונטיות: מיקום (דירה, קומה), סוג הבעיה, שמות אם מוזכרים.

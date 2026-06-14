@@ -79,8 +79,9 @@ lib/
     index.ts                          Canonical db client (drizzle + schema) — import db from here
     client.ts                         (deprecated scaffold — use index.ts)
   ai/
-    prompts.ts                        Hebrew classifier system prompt
     classifier.ts                     Claude Haiku 4.5 classifier (messages.parse + zodOutputFormat, cached system prompt)
+    prompts/
+      classify.ts                     Hebrew complaint-classifier system prompt builder
   whatsapp/
     client.ts                         Outbound send via Graph API
     parse-export.ts                   WhatsApp .txt chat-export parser (Android + iOS)

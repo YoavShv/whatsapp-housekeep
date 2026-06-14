@@ -12,9 +12,9 @@ function mockSuccess() {
   )
 }
 
-function mockApiError(code: number, message: string) {
+function mockApiError(code: number, message: string, extra?: Record<string, unknown>) {
   vi.mocked(fetch).mockResolvedValueOnce(
-    new Response(JSON.stringify({ error: { code, message } }), { status: 400 }),
+    new Response(JSON.stringify({ error: { code, message, ...extra } }), { status: 400 }),
   )
 }
 
@@ -46,6 +46,11 @@ describe('sendFreeform', () => {
         }),
       }),
     )
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+    expect(body.messaging_product).toBe('whatsapp')
+    expect(body.to).toBe(RECIPIENT)
+    expect(body.type).toBe('text')
+    expect(body.text.body).toBe('Hello')
   })
 
   it('throws WhatsAppApiError with the error code when the API responds with an error', async () => {
@@ -54,6 +59,26 @@ describe('sendFreeform', () => {
     const err = await sendFreeform(RECIPIENT, 'Hello').catch((e: unknown) => e)
     expect(err).toBeInstanceOf(WhatsAppApiError)
     expect((err as WhatsAppApiError).error.code).toBe(131047)
+  })
+
+  it('maps error_data.details and fbtrace_id onto WhatsAppApiError', async () => {
+    mockApiError(131047, 'Re-engagement message', {
+      error_data: { details: 'User must opt-in first' },
+      fbtrace_id: 'AbCdEfG',
+    })
+
+    const err = await sendFreeform(RECIPIENT, 'Hello').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(WhatsAppApiError)
+    expect((err as WhatsAppApiError).error.details).toBe('User must opt-in first')
+    expect((err as WhatsAppApiError).error.fbtrace_id).toBe('AbCdEfG')
+  })
+
+  it('wraps network errors as WhatsAppApiError with code -2', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const err = await sendFreeform(RECIPIENT, 'Hello').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(WhatsAppApiError)
+    expect((err as WhatsAppApiError).error.code).toBe(-2)
   })
 })
 
@@ -81,6 +106,15 @@ describe('sendTemplate', () => {
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
     expect(body.template.components).toHaveLength(1)
     expect(body.template.components[0].type).toBe('body')
+  })
+
+  it('omits components key when an empty array is passed', async () => {
+    mockSuccess()
+
+    await sendTemplate(RECIPIENT, 'complaint_received', 'he', [])
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+    expect(body.template.components).toBeUndefined()
   })
 
   it('throws WhatsAppApiError when the API returns an error', async () => {

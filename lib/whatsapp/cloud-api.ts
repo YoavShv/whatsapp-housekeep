@@ -34,22 +34,45 @@ interface ApiErrorResponse {
 }
 
 async function callApi(path: string, body: unknown): Promise<ApiSuccessResponse> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-  const data = (await res.json()) as ApiSuccessResponse | ApiErrorResponse
-  if (!res.ok) {
-    const { error } = data as ApiErrorResponse
+  const token = process.env.WHATSAPP_TOKEN
+  if (!token) throw new Error('WHATSAPP_TOKEN is not set')
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (cause) {
     throw new WhatsAppApiError({
-      code: error.code,
-      message: error.message,
-      details: error.error_data?.details,
-      fbtrace_id: error.fbtrace_id,
+      code: -2,
+      message: `Network error: ${cause instanceof Error ? cause.message : String(cause)}`,
+    })
+  }
+
+  let data: ApiSuccessResponse | ApiErrorResponse
+  try {
+    data = (await res.json()) as ApiSuccessResponse | ApiErrorResponse
+  } catch {
+    throw new WhatsAppApiError({
+      code: -1,
+      message: `Non-JSON response (HTTP ${res.status})`,
+      details: `Content-Type: ${res.headers.get('content-type') ?? 'unknown'}`,
+    })
+  }
+
+  if (!res.ok) {
+    const raw = data as unknown as Record<string, unknown>
+    const apiError = raw.error as ApiErrorResponse['error'] | undefined
+    throw new WhatsAppApiError({
+      code: apiError?.code ?? res.status,
+      message: apiError?.message ?? `HTTP ${res.status}`,
+      details: apiError?.error_data?.details ?? JSON.stringify(raw),
+      fbtrace_id: apiError?.fbtrace_id,
     })
   }
   return data as ApiSuccessResponse
@@ -57,6 +80,7 @@ async function callApi(path: string, body: unknown): Promise<ApiSuccessResponse>
 
 export async function sendFreeform(to: string, text: string): Promise<string> {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+  if (!phoneNumberId) throw new Error('WHATSAPP_PHONE_NUMBER_ID is not set')
   const data = await callApi(`/${phoneNumberId}/messages`, {
     messaging_product: 'whatsapp',
     to,
@@ -73,6 +97,7 @@ export async function sendTemplate(
   components?: TemplateComponent[],
 ): Promise<string> {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+  if (!phoneNumberId) throw new Error('WHATSAPP_PHONE_NUMBER_ID is not set')
   const data = await callApi(`/${phoneNumberId}/messages`, {
     messaging_product: 'whatsapp',
     to,

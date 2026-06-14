@@ -33,7 +33,7 @@ The webhook lives at `POST /api/whatsapp/webhook`. Meta verifies it with `GET /a
 One-time setup at [developers.facebook.com](https://developers.facebook.com):
 
 1. **Create a Meta app** → Add the **WhatsApp** product.
-2. From the WhatsApp → API Setup screen, copy the **temporary access token** and **phone number ID** into `.env.local` as `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`. (Temporary token lasts 24h; for permanent use, create a system user and a permanent token.)
+2. From the WhatsApp → API Setup screen, copy the **temporary access token** and **phone number ID** into `.env.local` as `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`. (Temporary token lasts 24h; for permanent use, create a system user and a permanent token.)
 3. From App Settings → Basic, copy the **app secret** into `WHATSAPP_APP_SECRET` (used to verify webhook signatures).
 4. Pick a string for `WHATSAPP_VERIFY_TOKEN` in `.env.local` — anything, just remember it.
 5. Expose your local server to the internet so Meta can reach it:
@@ -54,7 +54,7 @@ One-time setup at [developers.facebook.com](https://developers.facebook.com):
 |---|---|
 | `DATABASE_URL` | libsql/SQLite URL. Default `file:./data/dev.db` |
 | `ANTHROPIC_API_KEY` | Claude API key (get from [console.anthropic.com](https://console.anthropic.com/)) |
-| `WHATSAPP_ACCESS_TOKEN` | Meta WhatsApp Cloud API access token |
+| `WHATSAPP_TOKEN` | Meta WhatsApp Cloud API access token |
 | `WHATSAPP_PHONE_NUMBER_ID` | The phone number ID Meta assigns |
 | `WHATSAPP_VERIFY_TOKEN` | Any string — must match what you put in Meta's webhook config |
 | `WHATSAPP_APP_SECRET` | App Secret from Meta App Settings → Basic. Used for HMAC verification |
@@ -82,7 +82,7 @@ lib/
     prompts.ts                        Hebrew classifier system prompt
     classifier.ts                     Claude Haiku 4.5 classifier (messages.parse + zodOutputFormat, cached system prompt)
   whatsapp/
-    client.ts                         Outbound send via Graph API
+    cloud-api.ts                      Meta Cloud API client — sendFreeform, sendTemplate, WhatsAppApiError
     parse-export.ts                   WhatsApp .txt chat-export parser (Android + iOS)
     verify.ts                         HMAC-SHA256 signature verification
   intake.ts                           Orchestrator — resident lookup → classify → store → reply

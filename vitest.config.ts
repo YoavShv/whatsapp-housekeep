@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
+    env: {
+      DATABASE_URL: ':memory:',
+    },
   },
   resolve: {
     alias: {

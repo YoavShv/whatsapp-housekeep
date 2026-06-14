@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `residents_consent_token_unique` ON `residents` (`consent_token`);

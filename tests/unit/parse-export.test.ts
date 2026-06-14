@@ -31,6 +31,16 @@ describe('parseExport', () => {
     expect(records[0].timestamp).toEqual(new Date(2025, 2, 14, 21, 15, 0))
   })
 
+  it('converts 12:00 AM to midnight (hour 0)', () => {
+    const records = parseExport('[14/03/2025, 12:00:00 AM] Alice: night owl')
+    expect(records[0].timestamp).toEqual(new Date(2025, 2, 14, 0, 0, 0))
+  })
+
+  it('keeps 12:30 PM as noon (not 24:30)', () => {
+    const records = parseExport('[14/03/2025, 12:30:00 PM] Alice: lunch')
+    expect(records[0].timestamp).toEqual(new Date(2025, 2, 14, 12, 30, 0))
+  })
+
   it('treats a message with no sender as a system message', () => {
     const records = parseExport('14/3/25, 09:20 - הודעות ושיחות מוצפנות מקצה לקצה')
     expect(records).toHaveLength(1)
@@ -111,5 +121,17 @@ describe('parseExport', () => {
     expect(records).toHaveLength(1)
     expect(records[0].sender).toBe('Alice')
     expect(records[0].text).toBe('hi')
+  })
+
+  it('parses a dot-separated date (European format)', () => {
+    const records = parseExport('14.3.25, 09:15 - Alice: hi')
+    expect(records).toHaveLength(1)
+    expect(records[0].timestamp).toEqual(new Date(2025, 2, 14, 9, 15, 0))
+  })
+
+  it('strips carriage returns from CRLF line endings', () => {
+    const records = parseExport('14/3/25, 09:15 - Alice: hi\r\n14/3/25, 09:16 - Bob: there\r\n')
+    expect(records[0].text).toBe('hi')
+    expect(records[1].text).toBe('there')
   })
 })

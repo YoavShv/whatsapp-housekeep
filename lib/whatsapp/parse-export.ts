@@ -5,7 +5,7 @@ export interface ParsedMessage {
 }
 
 // LRM (U+200E), RLM (U+200F), ZWJ (U+200D) direction marks WhatsApp injects around RTL text.
-const DIRECTION_MARKS = /[‎‏‍]/g
+const DIRECTION_MARKS = /[\u200E\u200F\u200D]/g
 
 // A message-start line: optional [brackets], date, time (optional seconds, optional AM/PM),
 // then the remainder (sender + text, or system text). Android uses a ` - ` separator;
@@ -16,6 +16,10 @@ const MSG_LINE_RE =
 // Splits a remainder into sender and text. Non-greedy author capture stops at the first ': '.
 const AUTHOR_RE = /^(.+?):\s([\s\S]*)$/
 
+/**
+ * Precondition: dateStr and timeStr must be outputs of MSG_LINE_RE capture groups —
+ * digit-only strings that parseInt correctly. Returns Invalid Date for any other input.
+ */
 function parseDate(dateStr: string, timeStr: string): Date {
   const [day, month, yearRaw] = dateStr.split(/[/.\-]/).map((p) => parseInt(p, 10))
   const year = yearRaw < 100 ? yearRaw + 2000 : yearRaw
@@ -36,11 +40,12 @@ function parseDate(dateStr: string, timeStr: string): Date {
 
 export function parseExport(content: string): ParsedMessage[] {
   const messages: ParsedMessage[] = []
-  const lines = content.split('\n')
+  const lines = content.split(/\r?\n/)
   let current: ParsedMessage | null = null
 
   for (const rawLine of lines) {
     const line = rawLine.replace(DIRECTION_MARKS, '')
+    if (line.length === 0) continue
     const match = line.match(MSG_LINE_RE)
 
     if (match) {
@@ -48,6 +53,9 @@ export function parseExport(content: string): ParsedMessage[] {
 
       const [, dateStr, timeStr, remainder] = match
       const timestamp = parseDate(dateStr, timeStr)
+
+      if (isNaN(timestamp.getTime())) continue
+
       const authorMatch = remainder.match(AUTHOR_RE)
 
       if (authorMatch) {

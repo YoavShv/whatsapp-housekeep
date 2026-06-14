@@ -80,6 +80,7 @@ lib/
     classifier.ts                     Claude Haiku 4.5 classifier (messages.parse + zodOutputFormat, cached system prompt)
   whatsapp/
     client.ts                         Outbound send via Graph API
+    parse-export.ts                   WhatsApp .txt chat-export parser (Android + iOS)
     verify.ts                         HMAC-SHA256 signature verification
   intake.ts                           Orchestrator — resident lookup → classify → store → reply
 scripts/

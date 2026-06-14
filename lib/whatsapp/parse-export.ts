@@ -64,7 +64,6 @@ export function parseExport(content: string): ParsedMessage[] {
         current = { timestamp, sender: null, text: remainder }
       }
     } else if (current) {
-      // Continuation of a multi-line message.
       current.text += '\n' + line
     }
     // Otherwise: malformed line before any message — skip silently.

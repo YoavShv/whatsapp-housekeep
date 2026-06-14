@@ -11,7 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "validate": "bun run type-check && bun run lint && bun run test && bun run format:check"
+    "validate": "bun run type-check && bun run lint && bun run test && bun run format:check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "mkdir -p data && drizzle-kit migrate",
+    "db:seed": "bun run scripts/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

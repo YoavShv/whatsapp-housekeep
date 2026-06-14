@@ -54,7 +54,7 @@ export const residents = sqliteTable('residents', {
     .notNull()
     .references(() => buildings.id),
   consentedAt: integer('consented_at', { mode: 'timestamp' }),
-  consentToken: text('consent_token').notNull(),
+  consentToken: text('consent_token').notNull().unique(),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -71,6 +71,7 @@ export const complaints = sqliteTable('complaints', {
   urgency: text('urgency').$type<Urgency>().notNull().default('medium'),
   status: text('status').$type<ComplaintStatus>().notNull().default('open'),
   priority: integer('priority').notNull().default(0),
+  // return-type annotation required by Drizzle to break the circular inference cycle on self-refs
   dedupeTargetId: text('dedupe_target_id').references((): AnySQLiteColumn => complaints.id),
   openedAt: integer('opened_at', { mode: 'timestamp' })
     .notNull()
@@ -87,6 +88,7 @@ export const messages = sqliteTable('messages', {
   residentId: text('resident_id').references(() => residents.id),
   content: text('content').notNull(),
   source: text('source').$type<MessageSource>().notNull(),
+  // sent time from WhatsApp event — caller must supply; no default unlike createdAt (ingestion time)
   sentAt: integer('sent_at', { mode: 'timestamp' }).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

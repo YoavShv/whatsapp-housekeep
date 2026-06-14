@@ -5,6 +5,7 @@ import { migrate } from 'drizzle-orm/libsql/migrator'
 import { eq } from 'drizzle-orm'
 import * as schema from '../../lib/db/schema'
 import { managementCompanies, buildings, residents, complaints } from '../../lib/db/schema'
+import { db as indexDb } from '../../lib/db/index'
 
 import type { LibSQLDatabase } from 'drizzle-orm/libsql'
 
@@ -54,8 +55,6 @@ describe('db smoke test', () => {
     expect(found.urgency).toBe('low')
     expect(found.resolvedAt).toBeNull()
   })
-
-  // --- Edge cases ---
 
   it('allows null residentId on a Complaint (anonymous complaint)', async () => {
     const companyId = crypto.randomUUID()
@@ -122,5 +121,52 @@ describe('db smoke test', () => {
     const [msg] = await db.select().from(schema.messages).where(eq(schema.messages.id, messageId))
     expect(msg.source).toBe('whatsapp')
     expect(msg.content).toBe('הדלת תקועה')
+  })
+
+  it('links a duplicate complaint via dedupeTargetId', async () => {
+    const companyId = crypto.randomUUID()
+    const buildingId = crypto.randomUUID()
+    const parentId = crypto.randomUUID()
+    const dupId = crypto.randomUUID()
+
+    await db.insert(managementCompanies).values({ id: companyId, name: 'Dedupe Co' })
+    await db.insert(buildings).values({
+      id: buildingId,
+      name: 'Dedupe Bldg',
+      address: '4 Dedupe St',
+      managementCompanyId: companyId,
+    })
+    await db.insert(complaints).values({
+      id: parentId,
+      buildingId,
+      category: 'plumbing',
+      urgency: 'low',
+      status: 'open',
+      priority: 0,
+    })
+    await db.insert(complaints).values({
+      id: dupId,
+      buildingId,
+      category: 'plumbing',
+      urgency: 'low',
+      status: 'open',
+      priority: 0,
+      dedupeTargetId: parentId,
+    })
+
+    const [dup] = await db.select().from(complaints).where(eq(complaints.id, dupId))
+    expect(dup.dedupeTargetId).toBe(parentId)
+  })
+})
+
+describe('lib/db/index canonical export', () => {
+  it('exports a db instance with schema attached', () => {
+    expect(indexDb).toBeDefined()
+    expect(indexDb.query).toBeDefined()
+    expect(indexDb.query.managementCompanies).toBeDefined()
+    expect(indexDb.query.buildings).toBeDefined()
+    expect(indexDb.query.residents).toBeDefined()
+    expect(indexDb.query.complaints).toBeDefined()
+    expect(indexDb.query.messages).toBeDefined()
   })
 })

@@ -59,7 +59,9 @@ One-time setup at [developers.facebook.com](https://developers.facebook.com):
 | `WHATSAPP_VERIFY_TOKEN` | Any string — must match what you put in Meta's webhook config |
 | `WHATSAPP_APP_SECRET` | App Secret from Meta App Settings → Basic. Used for HMAC verification |
 | `POC_BUILDING_ID` | Single-tenant POC: the building all messages belong to. Default `building-001` |
-| `POC_BUILDING_NAME` | Human-readable name |
+| `POC_BUILDING_NAME` | Human-readable building name shown in the dashboard |
+| `POC_RESIDENT_PHONE` | Phone number for the pre-consented demo resident seeded by `db:seed`. Default `+972500000001` |
+| `POC_COMPANY_NAME` | Management company name for the demo seed. Leave blank to use `Acme Management` |
 
 If `WHATSAPP_APP_SECRET` is empty, signature verification is skipped (dev-only — never deploy this way).
 
@@ -73,8 +75,9 @@ app/
   api/whatsapp/webhook/route.ts       GET (verification) + POST (incoming messages)
 lib/
   db/
-    schema.ts                         Drizzle schema (buildings, residents, complaints, messages)
-    client.ts                         libsql + Drizzle client
+    schema.ts                         Drizzle schema — five tables, four TypeScript enums, relations, type exports
+    index.ts                          Canonical db client (drizzle + schema) — import db from here
+    client.ts                         (deprecated scaffold — use index.ts)
   ai/
     prompts.ts                        Hebrew classifier system prompt
     classifier.ts                     Claude Haiku 4.5 classifier (messages.parse + zodOutputFormat, cached system prompt)
@@ -112,10 +115,11 @@ The full design is in [`.ai/plans/whatsapp-complaint-module-mvp.md`](.ai/plans/w
 ## Useful commands
 
 ```sh
-npm run dev          # local dev server with hot reload
-npm run build        # production build (used to verify the code compiles)
-npm run db:migrate   # apply schema (idempotent)
-npm run db:seed      # add demo residents + complaints
+bun run dev              # local dev server with hot reload
+bun run build            # production build (used to verify the code compiles)
+bun run db:generate      # regenerate migration SQL after schema changes
+bun run db:migrate       # apply migrations (idempotent)
+bun run db:seed          # add demo residents + complaints
 ```
 
 ## Commit policy

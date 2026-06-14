@@ -17,6 +17,8 @@ async function seed() {
 
   await migrate(db, { migrationsFolder: './db/migrations' })
 
+  // Idempotent: existing rows are preserved unchanged. To update seed data,
+  // wipe data/dev.db and re-run. onConflictDoNothing() ignores all conflicts silently.
   await db
     .insert(managementCompanies)
     .values({ id: COMPANY_ID, name: process.env.POC_COMPANY_NAME ?? 'Demo Management Co.' })

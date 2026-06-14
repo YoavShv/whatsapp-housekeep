@@ -11,5 +11,18 @@
 # Python bytecode cache
 __pycache__/
 
+# Dependencies
+node_modules/
+
 # Next.js build output
 .next/
+next-env.d.ts
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# SQLite database files (created by db:migrate)
+data/
+
+# bun
+bun.debug.*

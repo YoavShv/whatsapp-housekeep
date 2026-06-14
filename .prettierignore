@@ -1,0 +1,11 @@
+.next/
+node_modules/
+db/migrations/
+bun.lock
+
+# Pre-existing documentation and template config not owned by the scaffold
+*.md
+.ai/
+.claude/
+.copier-answers.yml
+.mcp.json

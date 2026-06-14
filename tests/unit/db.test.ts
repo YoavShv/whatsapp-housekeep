@@ -13,7 +13,12 @@ async function createBuilding(db: LibSQLDatabase<typeof schema>): Promise<string
   const companyId = crypto.randomUUID()
   const buildingId = crypto.randomUUID()
   await db.insert(managementCompanies).values({ id: companyId, name: 'Test Co' })
-  await db.insert(buildings).values({ id: buildingId, name: 'Test Bldg', address: '1 Test St', managementCompanyId: companyId })
+  await db.insert(buildings).values({
+    id: buildingId,
+    name: 'Test Bldg',
+    address: '1 Test St',
+    managementCompanyId: companyId,
+  })
   return buildingId
 }
 
@@ -31,8 +36,18 @@ describe('db smoke test', () => {
     const residentId = crypto.randomUUID()
     const complaintId = crypto.randomUUID()
 
-    await db.insert(residents).values({ id: residentId, phone: '+972501110001', buildingId, consentToken: 'tok' })
-    await db.insert(complaints).values({ id: complaintId, buildingId, residentId, category: 'plumbing', urgency: 'low', status: 'open', priority: 0 })
+    await db
+      .insert(residents)
+      .values({ id: residentId, phone: '+972501110001', buildingId, consentToken: 'tok' })
+    await db.insert(complaints).values({
+      id: complaintId,
+      buildingId,
+      residentId,
+      category: 'plumbing',
+      urgency: 'low',
+      status: 'open',
+      priority: 0,
+    })
 
     const [found] = await db.select().from(complaints).where(eq(complaints.id, complaintId))
 
@@ -47,7 +62,15 @@ describe('db smoke test', () => {
     const buildingId = await createBuilding(db)
     const complaintId = crypto.randomUUID()
 
-    await db.insert(complaints).values({ id: complaintId, buildingId, residentId: null, category: 'noise', urgency: 'medium', status: 'open', priority: 0 })
+    await db.insert(complaints).values({
+      id: complaintId,
+      buildingId,
+      residentId: null,
+      category: 'noise',
+      urgency: 'medium',
+      status: 'open',
+      priority: 0,
+    })
 
     const [found] = await db.select().from(complaints).where(eq(complaints.id, complaintId))
     expect(found.residentId).toBeNull()
@@ -59,9 +82,27 @@ describe('db smoke test', () => {
     const complaintId = crypto.randomUUID()
     const messageId = crypto.randomUUID()
 
-    await db.insert(residents).values({ id: residentId, phone: '+972502220002', buildingId, consentToken: 'tok2' })
-    await db.insert(complaints).values({ id: complaintId, buildingId, residentId, category: 'electrical', urgency: 'high', status: 'open', priority: 1 })
-    await db.insert(schema.messages).values({ id: messageId, complaintId, buildingId, residentId, content: 'הדלת תקועה', source: 'whatsapp', sentAt: new Date() })
+    await db
+      .insert(residents)
+      .values({ id: residentId, phone: '+972502220002', buildingId, consentToken: 'tok2' })
+    await db.insert(complaints).values({
+      id: complaintId,
+      buildingId,
+      residentId,
+      category: 'electrical',
+      urgency: 'high',
+      status: 'open',
+      priority: 1,
+    })
+    await db.insert(schema.messages).values({
+      id: messageId,
+      complaintId,
+      buildingId,
+      residentId,
+      content: 'הדלת תקועה',
+      source: 'whatsapp',
+      sentAt: new Date(),
+    })
 
     const [msg] = await db.select().from(schema.messages).where(eq(schema.messages.id, messageId))
     expect(msg.source).toBe('whatsapp')
@@ -73,8 +114,23 @@ describe('db smoke test', () => {
     const parentId = crypto.randomUUID()
     const dupId = crypto.randomUUID()
 
-    await db.insert(complaints).values({ id: parentId, buildingId, category: 'plumbing', urgency: 'low', status: 'open', priority: 0 })
-    await db.insert(complaints).values({ id: dupId, buildingId, category: 'plumbing', urgency: 'low', status: 'open', priority: 0, dedupeTargetId: parentId })
+    await db.insert(complaints).values({
+      id: parentId,
+      buildingId,
+      category: 'plumbing',
+      urgency: 'low',
+      status: 'open',
+      priority: 0,
+    })
+    await db.insert(complaints).values({
+      id: dupId,
+      buildingId,
+      category: 'plumbing',
+      urgency: 'low',
+      status: 'open',
+      priority: 0,
+      dedupeTargetId: parentId,
+    })
 
     const [dup] = await db.select().from(complaints).where(eq(complaints.id, dupId))
     expect(dup.dedupeTargetId).toBe(parentId)

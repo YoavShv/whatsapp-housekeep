@@ -38,6 +38,9 @@ One-time setup at [developers.facebook.com](https://developers.facebook.com):
 4. Pick a string for `WHATSAPP_VERIFY_TOKEN` in `.env.local` — anything, just remember it.
 5. Expose your local server to the internet so Meta can reach it:
    ```sh
+   # Using the built-in script (requires cloudflared installed system-wide):
+   bun run dev:tunnel
+   # Or with ngrok:
    ngrok http 3000
    ```
 6. In Meta App → WhatsApp → Configuration → Webhook, set:
@@ -63,7 +66,7 @@ One-time setup at [developers.facebook.com](https://developers.facebook.com):
 | `POC_RESIDENT_PHONE` | Phone number for the pre-consented demo resident seeded by `db:seed`. Default `+972500000001` |
 | `POC_COMPANY_NAME` | Management company name for the demo seed. Leave blank to use `Acme Management` |
 
-If `WHATSAPP_APP_SECRET` is empty, signature verification is skipped (dev-only — never deploy this way).
+If `WHATSAPP_APP_SECRET` is empty, the POST webhook returns 500 — this prevents fail-open deployments where an empty key would otherwise accept any signed request.
 
 ## Project layout
 
@@ -84,7 +87,7 @@ lib/
   whatsapp/
     cloud-api.ts                      Meta Cloud API client — sendFreeform, sendTemplate, WhatsAppApiError
     parse-export.ts                   WhatsApp .txt chat-export parser (Android + iOS)
-    verify.ts                         HMAC-SHA256 signature verification
+    verify-signature.ts               HMAC-SHA256 signature verification
   intake.ts                           Orchestrator — resident lookup → classify → store → reply
 scripts/
   migrate.ts                          Idempotent CREATE TABLE — also seeds the building row

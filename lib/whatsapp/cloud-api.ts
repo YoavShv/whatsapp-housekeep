@@ -66,12 +66,11 @@ async function callApi(path: string, body: unknown): Promise<ApiSuccessResponse>
   }
 
   if (!res.ok) {
-    const raw = data as unknown as Record<string, unknown>
-    const apiError = raw.error as ApiErrorResponse['error'] | undefined
+    const apiError = (data as Partial<ApiErrorResponse>).error
     throw new WhatsAppApiError({
       code: apiError?.code ?? res.status,
       message: apiError?.message ?? `HTTP ${res.status}`,
-      details: apiError?.error_data?.details ?? JSON.stringify(raw),
+      details: apiError?.error_data?.details ?? JSON.stringify(data),
       fbtrace_id: apiError?.fbtrace_id,
     })
   }

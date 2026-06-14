@@ -32,6 +32,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const challenge = searchParams.get('hub.challenge')
 
   if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    if (!challenge) return new Response('Bad Request', { status: 400 })
     return new Response(challenge, { status: 200 })
   }
   return new Response('Forbidden', { status: 403 })
@@ -43,18 +44,29 @@ export async function POST(req: NextRequest): Promise<Response> {
   const sig = req.headers.get('x-hub-signature-256') ?? ''
   const secret = process.env.WHATSAPP_APP_SECRET ?? ''
 
+  if (!secret) {
+    console.error('[webhook] WHATSAPP_APP_SECRET is not configured')
+    return new Response('Internal Server Error', { status: 500 })
+  }
+
   if (!verifySignature(secret, rawBody, sig)) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const payload = JSON.parse(rawBody) as WebhookPayload
+  let payload: WebhookPayload
+  try {
+    payload = JSON.parse(rawBody) as WebhookPayload
+  } catch {
+    console.error('[webhook] Malformed JSON body (first 200 chars):', rawBody.slice(0, 200))
+    return new Response('Bad Request', { status: 400 })
+  }
   const pocBuildingId = process.env.POC_BUILDING_ID ?? 'building-001'
 
   for (const entry of payload.entry) {
     for (const change of entry.changes) {
       // Skip status receipts and other non-message changes.
       if (change.field !== 'messages') continue
-      // messages is absent for status-only changes; default to [].
+      // value.messages may be absent when the change only contains delivery/read statuses.
       for (const msg of change.value.messages ?? []) {
         if (msg.type !== 'text' || !msg.text?.body) continue
 
@@ -62,21 +74,25 @@ export async function POST(req: NextRequest): Promise<Response> {
         const phone = '+' + msg.from
         const sentAt = new Date(parseInt(msg.timestamp, 10) * 1000)
 
-        const [resident] = await db
-          .select()
-          .from(residents)
-          .where(eq(residents.phone, phone))
-          .limit(1)
+        try {
+          const [resident] = await db
+            .select()
+            .from(residents)
+            .where(eq(residents.phone, phone))
+            .limit(1)
 
-        await db.insert(messages).values({
-          id: crypto.randomUUID(),
-          complaintId: null,
-          buildingId: resident?.buildingId ?? pocBuildingId,
-          residentId: resident?.id ?? null,
-          content: msg.text.body,
-          source: 'whatsapp',
-          sentAt,
-        })
+          await db.insert(messages).values({
+            id: crypto.randomUUID(),
+            complaintId: null,
+            buildingId: resident?.buildingId ?? pocBuildingId,
+            residentId: resident?.id ?? null,
+            content: msg.text.body,
+            source: 'whatsapp',
+            sentAt,
+          })
+        } catch (err) {
+          console.error('[webhook] Failed to persist message from', phone, err)
+        }
       }
     }
   }

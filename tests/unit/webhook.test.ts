@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createHmac } from 'crypto'
 import { verifySignature } from '@/lib/whatsapp/verify-signature'
+import { db } from '@/lib/db/index'
 
 // vi.mock is hoisted above the imports below, so the route's db import resolves to this mock.
 vi.mock('@/lib/db/index', () => ({
@@ -99,6 +100,7 @@ describe('POST /api/whatsapp/webhook', () => {
 
   beforeEach(() => {
     process.env.WHATSAPP_APP_SECRET = APP_SECRET
+    vi.clearAllMocks()
   })
 
   const validPayload = JSON.stringify({
@@ -182,5 +184,87 @@ describe('POST /api/whatsapp/webhook', () => {
     })
     const res = await POST(makeSignedRequest(payload) as never)
     expect(res.status).toBe(200)
+  })
+
+  it('returns 500 when WHATSAPP_APP_SECRET env var is not set', async () => {
+    const saved = process.env.WHATSAPP_APP_SECRET
+    delete process.env.WHATSAPP_APP_SECRET
+    try {
+      const res = await POST(makeSignedRequest(validPayload) as never)
+      expect(res.status).toBe(500)
+    } finally {
+      process.env.WHATSAPP_APP_SECRET = saved
+    }
+  })
+
+  it('returns 400 for a valid-signature but non-JSON body', async () => {
+    const body = 'not-json-at-all'
+    const sig = 'sha256=' + createHmac('sha256', APP_SECRET).update(body, 'utf8').digest('hex')
+    const req = new Request('http://localhost/api/whatsapp/webhook', {
+      method: 'POST',
+      headers: { 'x-hub-signature-256': sig },
+      body,
+    })
+    const res = await POST(req as never)
+    expect(res.status).toBe(400)
+  })
+
+  it('inserts a message row with correct fields for a valid text message', async () => {
+    const res = await POST(makeSignedRequest(validPayload) as never)
+    expect(res.status).toBe(200)
+    expect(db.insert).toHaveBeenCalledTimes(1)
+    const valuesMock = (db.insert as any).mock.results[0].value.values
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'הדלת תקועה',
+        source: 'whatsapp',
+        residentId: null,
+        sentAt: new Date(1748890800 * 1000),
+      }),
+    )
+  })
+
+  it('does not insert when a non-text message is received', async () => {
+    const payload = JSON.stringify({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: 'waba-id',
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                messages: [
+                  { from: '972501234567', id: 'wamid.456', timestamp: '1748890800', type: 'image' },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    })
+    await POST(makeSignedRequest(payload) as never)
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+
+  it('uses resident buildingId and residentId when resident is found', async () => {
+    const fakeResident = { id: 'res-001', buildingId: 'bldg-abc', phone: '+972501234567' }
+    ;(db.select as any).mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([fakeResident]),
+        }),
+      }),
+    })
+
+    await POST(makeSignedRequest(validPayload) as never)
+
+    const valuesMock = (db.insert as any).mock.results[0].value.values
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buildingId: 'bldg-abc',
+        residentId: 'res-001',
+      }),
+    )
   })
 })

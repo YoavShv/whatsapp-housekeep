@@ -7,5 +7,7 @@ bun.lock
 *.md
 .ai/
 .claude/
+.agents/
+.archon/
 .copier-answers.yml
 .mcp.json

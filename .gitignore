@@ -26,3 +26,8 @@ data/
 
 # bun
 bun.debug.*
+
+# Non-bun lockfiles — this project uses bun only (see CLAUDE.md)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

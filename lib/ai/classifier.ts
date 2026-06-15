@@ -53,7 +53,7 @@ export async function classifyMessage(input: ClassifyInput): Promise<ClassifyOut
   const result = response.parsed_output
   if (!result) {
     throw new Error(
-      `Classifier returned no parsed output (stop_reason=${response.stop_reason}, messagePreview=${message.slice(0, 60)})`
+      `Classifier returned no parsed output (stop_reason=${response.stop_reason}, messagePreview=${message.slice(0, 60)})`,
     )
   }
 

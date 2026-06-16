@@ -42,7 +42,7 @@ export async function processIncomingMessage(input: IntakeInput): Promise<void> 
         id: newComplaintId,
         buildingId,
         residentId,
-        title: classification.suggested_title_he ?? null,
+        title: classification.suggested_title_he,
         // category/urgency can be null even when is_complaint=true; default to satisfy NOT NULL.
         category: classification.category ?? 'other',
         urgency: classification.urgency ?? 'medium',

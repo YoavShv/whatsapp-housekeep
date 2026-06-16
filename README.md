@@ -87,9 +87,9 @@ lib/
       classify.ts                     Hebrew complaint-classifier system prompt builder
   whatsapp/
     cloud-api.ts                      Meta Cloud API client — sendFreeform, sendTemplate, WhatsAppApiError
+    intake.ts                         Complaint intake pipeline — classify → store complaint + message → send ack
     parse-export.ts                   WhatsApp .txt chat-export parser (Android + iOS)
     verify-signature.ts               HMAC-SHA256 signature verification
-  intake.ts                           Orchestrator — resident lookup → classify → store → reply
 scripts/
   migrate.ts                          Idempotent CREATE TABLE — also seeds the building row
   seed.ts                             Demo residents + complaints

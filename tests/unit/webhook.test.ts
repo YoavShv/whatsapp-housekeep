@@ -17,7 +17,12 @@ vi.mock('@/lib/db/index', () => ({
   },
 }))
 
+vi.mock('@/lib/whatsapp/intake', () => ({
+  processIncomingMessage: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { GET, POST } from '@/app/api/whatsapp/webhook/route'
+import { processIncomingMessage } from '@/lib/whatsapp/intake'
 
 describe('verifySignature', () => {
   const SECRET = 'test-secret'
@@ -209,22 +214,20 @@ describe('POST /api/whatsapp/webhook', () => {
     expect(res.status).toBe(400)
   })
 
-  it('inserts a message row with correct fields for a valid text message', async () => {
+  it('calls processIncomingMessage with correct IntakeInput for a valid text message', async () => {
     const res = await POST(makeSignedRequest(validPayload) as never)
     expect(res.status).toBe(200)
-    expect(db.insert).toHaveBeenCalledTimes(1)
-    const valuesMock = (db.insert as any).mock.results[0].value.values
-    expect(valuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: 'הדלת תקועה',
-        source: 'whatsapp',
-        residentId: null,
-        sentAt: new Date(1748890800 * 1000),
-      }),
-    )
+    expect(processIncomingMessage).toHaveBeenCalledTimes(1)
+    expect(processIncomingMessage).toHaveBeenCalledWith({
+      messageText: 'הדלת תקועה',
+      phone: '+972501234567',
+      buildingId: expect.any(String),
+      residentId: null,
+      sentAt: new Date(1748890800 * 1000),
+    })
   })
 
-  it('does not insert when a non-text message is received', async () => {
+  it('does not call processIncomingMessage for non-text messages', async () => {
     const payload = JSON.stringify({
       object: 'whatsapp_business_account',
       entry: [
@@ -244,10 +247,10 @@ describe('POST /api/whatsapp/webhook', () => {
       ],
     })
     await POST(makeSignedRequest(payload) as never)
-    expect(db.insert).not.toHaveBeenCalled()
+    expect(processIncomingMessage).not.toHaveBeenCalled()
   })
 
-  it('uses resident buildingId and residentId when resident is found', async () => {
+  it('passes resident buildingId and residentId when resident is found', async () => {
     const fakeResident = { id: 'res-001', buildingId: 'bldg-abc', phone: '+972501234567' }
     ;(db.select as any).mockReturnValueOnce({
       from: vi.fn().mockReturnValue({
@@ -259,12 +262,8 @@ describe('POST /api/whatsapp/webhook', () => {
 
     await POST(makeSignedRequest(validPayload) as never)
 
-    const valuesMock = (db.insert as any).mock.results[0].value.values
-    expect(valuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        buildingId: 'bldg-abc',
-        residentId: 'res-001',
-      }),
+    expect(processIncomingMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ buildingId: 'bldg-abc', residentId: 'res-001' }),
     )
   })
 })

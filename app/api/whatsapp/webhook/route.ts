@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/index'
-import { messages, residents } from '@/lib/db/schema'
+import { residents } from '@/lib/db/schema'
 import { verifySignature } from '@/lib/whatsapp/verify-signature'
+import { processIncomingMessage } from '@/lib/whatsapp/intake'
 
 type WebhookTextMessage = {
   from: string
@@ -81,17 +82,18 @@ export async function POST(req: NextRequest): Promise<Response> {
             .where(eq(residents.phone, phone))
             .limit(1)
 
-          await db.insert(messages).values({
-            id: crypto.randomUUID(),
-            complaintId: null,
+          await processIncomingMessage({
+            messageText: msg.text.body,
+            phone,
             buildingId: resident?.buildingId ?? pocBuildingId,
             residentId: resident?.id ?? null,
-            content: msg.text.body,
-            source: 'whatsapp',
             sentAt,
           })
         } catch (err) {
-          console.error('[webhook] Failed to persist message from', phone, err)
+          console.error('[webhook] Failed to process message from', {
+            phoneSuffix: phone.slice(-4),
+            error: err instanceof Error ? err.message : String(err),
+          })
         }
       }
     }

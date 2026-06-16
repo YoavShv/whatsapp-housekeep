@@ -20,7 +20,7 @@ export async function processIncomingMessage(input: IntakeInput): Promise<void> 
   let complaintId: string | null = null
 
   try {
-    // Fetch open complaints for dedup context — must end with .limit() for mock compatibility.
+    // Cap at 50 open complaints for dedup context; mock chain must also end with .limit().
     const openRows = await db
       .select({ id: complaints.id, title: complaints.title, category: complaints.category })
       .from(complaints)
@@ -37,9 +37,9 @@ export async function processIncomingMessage(input: IntakeInput): Promise<void> 
     const classification = await classifyMessage({ message: messageText, openComplaints })
 
     if (classification.is_complaint) {
-      complaintId = crypto.randomUUID()
+      const newComplaintId = crypto.randomUUID()
       await db.insert(complaints).values({
-        id: complaintId,
+        id: newComplaintId,
         buildingId,
         residentId,
         title: classification.suggested_title_he ?? null,
@@ -50,9 +50,10 @@ export async function processIncomingMessage(input: IntakeInput): Promise<void> 
         priority: 0,
         dedupeTargetId: classification.dedupe_target_id,
       })
+      complaintId = newComplaintId // only set AFTER confirmed DB write
     }
   } catch (err) {
-    console.error('[intake] Classification failed', {
+    console.error('[intake] Classification or complaint insert failed', {
       phoneSuffix: phone.slice(-4),
       error: err instanceof Error ? err.message : String(err),
     })

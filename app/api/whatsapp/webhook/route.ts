@@ -90,7 +90,10 @@ export async function POST(req: NextRequest): Promise<Response> {
             sentAt,
           })
         } catch (err) {
-          console.error('[webhook] Failed to process message from', phone, err)
+          console.error('[webhook] Failed to process message from', {
+            phoneSuffix: phone.slice(-4),
+            error: err instanceof Error ? err.message : String(err),
+          })
         }
       }
     }

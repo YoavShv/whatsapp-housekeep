@@ -126,6 +126,47 @@ describe('processIncomingMessage', () => {
     })
   })
 
+  it('substitutes placeholder for null title in open complaints passed to classifier', async () => {
+    ;(db.select as any).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            { id: 'cmp-1', title: null, category: 'elevator' },
+            { id: 'cmp-2', title: 'רעש', category: 'noise' },
+          ]),
+        }),
+      }),
+    })
+    vi.mocked(classifyMessage).mockResolvedValue(classification({ is_complaint: false }))
+
+    await processIncomingMessage(baseInput)
+
+    expect(classifyMessage).toHaveBeenCalledWith({
+      message: baseInput.messageText,
+      openComplaints: [
+        { id: 'cmp-1', title: '(ללא כותרת)', category: 'elevator' },
+        { id: 'cmp-2', title: 'רעש', category: 'noise' },
+      ],
+    })
+  })
+
+  it('handles anonymous resident (residentId=null)', async () => {
+    vi.mocked(classifyMessage).mockResolvedValue(
+      classification({ is_complaint: true, category: 'noise', urgency: 'low' }),
+    )
+
+    await processIncomingMessage({ ...baseInput, residentId: null })
+
+    const complaintValues = (db.insert as any).mock.results[0].value.values
+    expect(complaintValues).toHaveBeenCalledWith(
+      expect.objectContaining({ residentId: null }),
+    )
+    const messageValues = (db.insert as any).mock.results[1].value.values
+    expect(messageValues).toHaveBeenCalledWith(
+      expect.objectContaining({ residentId: null }),
+    )
+  })
+
   it('still inserts message when classifier throws', async () => {
     vi.mocked(classifyMessage).mockRejectedValue(new Error('network down'))
 

@@ -158,13 +158,9 @@ describe('processIncomingMessage', () => {
     await processIncomingMessage({ ...baseInput, residentId: null })
 
     const complaintValues = (db.insert as any).mock.results[0].value.values
-    expect(complaintValues).toHaveBeenCalledWith(
-      expect.objectContaining({ residentId: null }),
-    )
+    expect(complaintValues).toHaveBeenCalledWith(expect.objectContaining({ residentId: null }))
     const messageValues = (db.insert as any).mock.results[1].value.values
-    expect(messageValues).toHaveBeenCalledWith(
-      expect.objectContaining({ residentId: null }),
-    )
+    expect(messageValues).toHaveBeenCalledWith(expect.objectContaining({ residentId: null }))
   })
 
   it('still inserts message when classifier throws', async () => {

@@ -18,10 +18,10 @@ This is a **proof of concept** — single-tenant, minimum dependencies, no payme
 
 ```sh
 cp .env.example .env.local           # fill in WhatsApp + Anthropic keys
-npm install                          # already done in this repo
-npm run db:migrate                   # creates SQLite tables + seeds the building row
-npm run db:seed                      # (optional) inserts demo residents + complaints
-npm run dev                          # http://localhost:3000
+bun install                          # install dependencies
+bun run db:migrate                   # creates SQLite tables + seeds the building row
+bun run db:seed                      # (optional) inserts demo residents + complaints
+bun run dev                          # http://localhost:3000
 ```
 
 Open `http://localhost:3000` to see the dashboard. With `db:seed`, three demo complaints will appear immediately.
@@ -72,14 +72,26 @@ If `WHATSAPP_APP_SECRET` is empty, the POST webhook returns 500 — this prevent
 
 ```
 app/
-  layout.tsx                          Hebrew RTL root layout
-  page.tsx                            Dashboard — lists complaints, mark-resolved button
-  actions.ts                          Server actions: resolve / reopen
+  layout.tsx                          Hebrew RTL root layout (lang=he, dir=rtl)
+  page.tsx                            Landing / root redirect
+  (dashboard)/
+    layout.tsx                        Dashboard shell: nav bar + force-dynamic
+    _components/
+      ComplaintsTable.tsx             Shared Hebrew RTL complaints table
+    complaints/
+      page.tsx                        Open complaints queue — all buildings
+      [id]/page.tsx                   Complaint detail + mark-resolved form
+    buildings/
+      [id]/page.tsx                   Per-building open complaints queue
   api/whatsapp/webhook/route.ts       GET (verification) + POST (incoming messages)
 lib/
+  dashboard/
+    queries.ts                        DB queries: open complaints list, detail
+    actions.ts                        Server actions: resolveComplaint
+    helpers.ts                        Hebrew label maps: category, urgency
   db/
     schema.ts                         Drizzle schema — five tables, four TypeScript enums, relations, type exports
-    index.ts                          Canonical db client (drizzle + schema) — import db from here
+    index.ts                          Canonical db client — lazy singleton via Proxy, import from here
     client.ts                         (deprecated scaffold — use index.ts)
   ai/
     classifier.ts                     Claude Haiku 4.5 classifier (messages.parse + zodOutputFormat, cached system prompt)

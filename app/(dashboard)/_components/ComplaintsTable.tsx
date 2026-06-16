@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import type { Complaint, Building } from '@/lib/db/schema'
+import type { ComplaintRow } from '@/lib/dashboard/queries'
 import { categoryLabel, urgencyLabel } from '@/lib/dashboard/helpers'
-
-type ComplaintRow = Complaint & { building: Building | null }
 
 export function ComplaintsTable({ rows }: { rows: ComplaintRow[] }) {
   if (rows.length === 0) {

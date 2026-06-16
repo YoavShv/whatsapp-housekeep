@@ -12,13 +12,15 @@ import {
   messages,
 } from '../../lib/db/schema'
 
-// vi.mock is hoisted; the getter resolves testDb lazily after beforeAll initializes it.
+// A Proxy forwards all property accesses to testDb after beforeAll initializes it.
+// This avoids ESM live-binding issues with getter-on-factory-object in Bun/Vitest.
 let testDb: LibSQLDatabase<typeof schema>
-vi.mock('@/lib/db/index', () => ({
-  get db() {
-    return testDb
+const dbProxy = new Proxy({} as LibSQLDatabase<typeof schema>, {
+  get(_, prop) {
+    return Reflect.get(testDb, prop, testDb)
   },
-}))
+})
+vi.mock('@/lib/db/index', () => ({ db: dbProxy }))
 
 import {
   getOpenComplaints,

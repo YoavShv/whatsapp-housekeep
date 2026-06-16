@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import { getComplaintDetail } from '@/lib/dashboard/queries'
 import { resolveComplaint } from '@/lib/dashboard/actions'
 import { categoryLabel, urgencyLabel } from '@/lib/dashboard/helpers'
@@ -6,9 +7,7 @@ export default async function ComplaintDetailPage({ params }: { params: Promise<
   const { id } = await params
   const complaint = await getComplaintDetail(id)
 
-  if (!complaint) {
-    return <p className="text-gray-500">לא נמצא</p>
-  }
+  if (!complaint) notFound()
 
   return (
     <div className="max-w-2xl">
@@ -45,6 +44,7 @@ export default async function ComplaintDetailPage({ params }: { params: Promise<
       {complaint.status === 'open' && (
         <form action={resolveComplaint}>
           <input type="hidden" name="id" value={complaint.id} />
+          <input type="hidden" name="buildingId" value={complaint.buildingId} />
           <button
             type="submit"
             className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"

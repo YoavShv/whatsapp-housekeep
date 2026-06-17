@@ -12,13 +12,17 @@ import {
   messages,
 } from '../../lib/db/schema'
 
-// A Proxy forwards all property accesses to testDb after beforeAll initializes it.
-// This avoids ESM live-binding issues with getter-on-factory-object in Bun/Vitest.
-let testDb: LibSQLDatabase<typeof schema>
-const dbProxy = new Proxy({} as LibSQLDatabase<typeof schema>, {
-  get(_, prop) {
-    return Reflect.get(testDb, prop, testDb)
-  },
+// dbProxy forwards property access to the test DB once beforeAll sets dbHolder.db.
+// Created via vi.hoisted so the (hoisted) vi.mock factory below can reference it
+// without a "cannot access 'dbProxy' before initialization" error.
+const { dbProxy, dbHolder } = vi.hoisted(() => {
+  const dbHolder = { db: null as unknown as LibSQLDatabase<typeof schema> }
+  const dbProxy = new Proxy({} as LibSQLDatabase<typeof schema>, {
+    get(_, prop) {
+      return Reflect.get(dbHolder.db, prop, dbHolder.db)
+    },
+  })
+  return { dbProxy, dbHolder }
 })
 vi.mock('@/lib/db/index', () => ({ db: dbProxy }))
 
@@ -40,22 +44,22 @@ const resolvedId = crypto.randomUUID()
 describe('dashboard queries', () => {
   beforeAll(async () => {
     const client = createClient({ url: ':memory:' })
-    testDb = drizzle(client, { schema })
-    await migrate(testDb, { migrationsFolder: './db/migrations' })
+    dbHolder.db = drizzle(client, { schema })
+    await migrate(dbHolder.db, { migrationsFolder: './db/migrations' })
 
-    await testDb.insert(managementCompanies).values({ id: companyId, name: 'Test Co' })
-    await testDb.insert(buildings).values([
+    await dbHolder.db.insert(managementCompanies).values({ id: companyId, name: 'Test Co' })
+    await dbHolder.db.insert(buildings).values([
       { id: buildingA, name: 'בניין א', address: '1 St', managementCompanyId: companyId },
       { id: buildingB, name: 'בניין ב', address: '2 St', managementCompanyId: companyId },
     ])
-    await testDb.insert(residents).values({
+    await dbHolder.db.insert(residents).values({
       id: residentId,
       phone: '+972501110001',
       buildingId: buildingA,
       consentToken: 'tok',
     })
 
-    await testDb.insert(complaints).values([
+    await dbHolder.db.insert(complaints).values([
       {
         id: openOldId,
         buildingId: buildingA,
@@ -86,7 +90,7 @@ describe('dashboard queries', () => {
       },
     ])
 
-    await testDb.insert(messages).values([
+    await dbHolder.db.insert(messages).values([
       {
         id: crypto.randomUUID(),
         complaintId: openOldId,
